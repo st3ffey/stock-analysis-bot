@@ -1,109 +1,123 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[39]:
-
-
 import os
 import warnings
 import openai
 import langchain
 import requests
 import yfinance as yf
-os.environ["OPENAI_API_KEY"] = "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"
-openai.api_key = "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"
+
+# Replace with actual API keys
+os.environ["OPENAI_API_KEY"] = "xx"
+openai.api_key = "xx"
 
 warnings.filterwarnings("ignore")
-
-
-# ### Creating tools for fetching data
-
-
-
-# In[52]:
-
 
 import yfinance as yf
 
 # Stock data from Yahoo Finance
 
-def get_stock_price(ticker, history=5):
-    # time.sleep(4) #To avoid rate limit error
+def get_stock_price(ticker: str, history: int = 5) -> str:
+    """
+    Fetches the closing price and volume of a stock for a given number of days.
+
+    Parameters:
+    - ticker (str): The stock ticker symbol. If the ticker contains a ".", 
+                    everything after the "." will be ignored.
+    - history (int, optional): Number of days of stock history to fetch. 
+                               Default is 5 days.
+
+    Returns:
+    - str: A string representation of the stock's closing price and volume 
+           for the specified number of days.
+    """
+    
+    # Extract the main part of the ticker if it contains a "."
     if "." in ticker:
-        ticker=ticker.split(".")[0]
+        ticker = ticker.split(".")[0]
+        
+    # Fetch the stock data for the past year
     stock = yf.Ticker(ticker)
     df = stock.history(period="1y")
-    df = df[["Close","Volume"]]
+    
+    # Filter and format the dataframe
+    df = df[["Close", "Volume"]]
     df.index = [str(x).split()[0] for x in list(df.index)]
     df.index.rename("Date", inplace=True)
     df = df[-history:]
-    # print(df.columns)
     
     return df.to_string()
 
-print(get_stock_price("AAPL"))
-
-
-# In[55]:
-
-
-def get_recent_stock_news(company_name):
-    api_key = '53561b20660b48f49e135d473534196c'
+def get_recent_stock_news(company_name: str) -> list:
+    """
+    Fetches recent stock news titles related to a given company.
     
+    Parameters:
+    - company_name (str): The name of the company to fetch the news for.
+
+    Returns:
+    - list: A list of titles of the recent stock news related to the company. 
+            Returns None if there's an issue fetching the data.
+    """
+    
+    # API setup
+    api_key = 'xx'  # Replace 'xx' with your actual API key
     headers = {
         'Ocp-Apim-Subscription-Key': api_key,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
     
     # Constructing the API URL
-    query = company_name + "stock news"
-    count = 10  # to get 5 results
-    offset = 0  # to start from the first result
-    mkt = 'en-US'  # market: language-country/region
-    safesearch = 'Moderate'  # or 'Strict' or 'Off'
+    query = f"{company_name} stock news"
+    count = 10  # Number of news results
+    offset = 0  # Starting point for the results
+    mkt = 'en-US'  # Market: language-country/region
+    safesearch = 'Moderate'  # Safety level for the search
+    
     api_url = f'https://api.bing.microsoft.com/v7.0/news/search?q={query}&count={count}&offset={offset}&mkt={mkt}&safesearch={safesearch}'
     
+    # Fetching the data
     response = requests.get(api_url, headers=headers)
     
     if response.status_code == 200:
         results = response.json()
         
-        # Extracting titles and URLs of the results
-        top_news = []
-        for result in results['value']:
-            title = result['name']
-            top_news.append(title)
+        # Extracting titles of the news
+        top_news = [result['name'] for result in results['value']]
         
         return top_news
-    
     else:
-        print('Failed to retrieve data:', response.status_code)
+        print(f'Failed to retrieve data. Status code: {response.status_code}')
         return None
-
-
-# In[46]:
-
-
+        
 # Fetch financial statements from Yahoo Finance
 
-def get_financial_statements(ticker):
-    # time.sleep(4) #To avoid rate limit error
+def get_financial_statements(ticker: str) -> str:
+    """
+    Fetches the balance sheet of a given stock ticker for the most recent 3 years.
+    
+    Parameters:
+    - ticker (str): The stock ticker symbol. If the ticker contains a ".", 
+                    everything after the "." will be ignored.
+    
+    Returns:
+    - str: A string representation of the balance sheet for the most recent 
+           3 years. Returns an empty string if no data is found.
+    """
+    
+    # Extract the main part of the ticker if it contains a "."
     if "." in ticker:
         ticker = ticker.split(".")[0]
-    else:
-        ticker = ticker
+    
     company = yf.Ticker(ticker)
     balance_sheet = company.balance_sheet
+    
+    # Limit the data to the most recent 3 years
     if balance_sheet.shape[1] >= 3:
-        balance_sheet = balance_sheet.iloc[:, :3]    # Remove 4th years data
-    balance_sheet = balance_sheet.dropna(how = "any")
-    balance_sheet = balance_sheet.to_string()
-
-    return balance_sheet
-
-
-# In[30]:
-
+        balance_sheet = balance_sheet.iloc[:, :3]
+    
+    # Drop rows with missing values
+    balance_sheet = balance_sheet.dropna(how="any")
+    
+    return balance_sheet.to_string()
 
 import json
 function=[
@@ -127,26 +141,55 @@ function=[
     }
 ]
 
+def get_stock_ticker(query: str) -> tuple:
+    """
+    Fetches the company name and stock ticker based on a given query using the OpenAI GPT-3.5 Turbo model.
+    
+    Parameters:
+    - query (str): The user's request containing details to identify the company name and stock ticker.
+    
+    Returns:
+    - tuple: A tuple containing the company stock ticker and company name.
+             Returns an empty tuple if no data is found or there's an error in processing.
+    """
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"From the following user request, what is the company name and the company stock ticker?: {query}?"
+                }
+            ],
+            functions=function,
+            function_call={"name": "get_company_ticker"},
+        )
 
-# In[58]:
-def get_stock_ticker(query):
-    response = openai.ChatCompletion.create(
-            model = "gpt-3.5-turbo",
-            temperature = 0.1,
-            messages = [{
-                "role":"user",
-                "content":f"From the following user request, what is the comapany name and the company stock ticker ?: {query}?"
-            }],
-            functions = function,
-            function_call = {"name": "get_company_ticker"},
-    )
-    message = response["choices"][0]["message"]
-    arguments = json.loads(message["function_call"]["arguments"])
-    company_name = arguments["company_name"]
-    company_ticker = arguments["ticker_symbol"]
-    return company_ticker, company_name
+        message = response["choices"][0]["message"]
+        arguments = json.loads(message["function_call"]["arguments"])
+        company_name = arguments["company_name"]
+        company_ticker = arguments["ticker_symbol"]
 
-def analyze_stock_with_openai_chat(user_request):
+        return company_ticker, company_name
+    
+    except Exception as e:
+        print(f"Error processing request: {e}")
+        return ()
+
+def analyze_stock_with_openai_chat(user_request: str) -> str:
+    """
+    Analyzes a stock based on user's request using OpenAI's GPT-3.5 Turbo model. The function gathers stock price, 
+    recent news, and financial statements to provide a pros and cons list for investing in the specified company.
+    
+    Parameters:
+    - user_request (str): The user's request containing details about the stock or company to analyze.
+    
+    Returns:
+    - str: A detailed analysis from GPT-3.5 Turbo model on whether or not the company is a good investment.
+    """
+    
     # Extract company name and ticker from user's request
     ticker, company_name = get_stock_ticker(user_request)
     
@@ -162,7 +205,6 @@ def analyze_stock_with_openai_chat(user_request):
     ]
     
     # Use OpenAI API to get the model's response
-    # Uncomment the below code when you have the OpenAI API set up in your environment
     response = openai.ChatCompletion.create(
       model="gpt-3.5-turbo",
       messages=messages
@@ -171,14 +213,13 @@ def analyze_stock_with_openai_chat(user_request):
     result = response.choices[0].message['content']
     final = ' '.join(result.split())
     
-    for i in final:
-        i.replace(":", ":\n")
+    # Format the output for better readability
+    final = final.replace(":", ":\n")
+    
     return final
 
 
-# In[59]:
-
-
+## flask application
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -194,5 +235,3 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-    

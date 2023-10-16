@@ -5,7 +5,7 @@ import langchain
 import requests
 import yfinance as yf
 
-# Replace with actual API keys
+# Replace with actual API key
 os.environ["OPENAI_API_KEY"] = "xx"
 openai.api_key = "xx"
 
@@ -30,16 +30,12 @@ def get_stock_price(ticker: str, history: int = 5) -> str:
            for the specified number of days.
     """
     
-    # Extract the main part of the ticker if it contains a "."
-    if "." in ticker:
-        ticker = ticker.split(".")[0]
-        
     # Fetch the stock data for the past year
     stock = yf.Ticker(ticker)
     df = stock.history(period="1y")
     
     # Filter and format the dataframe
-    df = df[["Close", "Volume"]]
+    df = df[["Closing", "Volume"]]
     df.index = [str(x).split()[0] for x in list(df.index)]
     df.index.rename("Date", inplace=True)
     df = df[-history:]
@@ -59,7 +55,7 @@ def get_recent_stock_news(company_name: str) -> list:
     """
     
     # API setup
-    api_key = 'xx'  # Replace 'xx' with your actual API key
+    api_key = 'xx'  # Replace 'xx' with actual API key
     headers = {
         'Ocp-Apim-Subscription-Key': api_key,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
@@ -119,6 +115,7 @@ def get_financial_statements(ticker: str) -> str:
     
     return balance_sheet.to_string()
 
+# Organizing a function for prompt engineering to get stock ticker
 import json
 function=[
         {
@@ -157,16 +154,17 @@ def get_stock_ticker(query: str) -> tuple:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             temperature=0.1,
-            messages=[
+            messages = [
                 {
                     "role": "user",
                     "content": f"From the following user request, what is the company name and the company stock ticker?: {query}?"
                 }
             ],
-            functions=function,
-            function_call={"name": "get_company_ticker"},
+            functions = function,
+            function_call = {"name": "get_company_ticker"},
         )
 
+        # Formatting to retrieve ticker and company name
         message = response["choices"][0]["message"]
         arguments = json.loads(message["function_call"]["arguments"])
         company_name = arguments["company_name"]
@@ -193,7 +191,7 @@ def analyze_stock_with_openai_chat(user_request: str) -> str:
     # Extract company name and ticker from user's request
     ticker, company_name = get_stock_ticker(user_request)
     
-    # Gather relevant information
+    # Gather relevant information for processing
     stock_price_data = get_stock_price(ticker)
     recent_news = get_recent_stock_news(company_name)
     financial_statements = get_financial_statements(ticker)
@@ -209,7 +207,8 @@ def analyze_stock_with_openai_chat(user_request: str) -> str:
       model="gpt-3.5-turbo",
       messages=messages
     )
-    
+
+    # Format as string and remove uncessary newlines
     result = response.choices[0].message['content']
     final = ' '.join(result.split())
     

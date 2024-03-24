@@ -5,7 +5,7 @@ import langchain
 import requests
 import yfinance as yf
 
-# Replace with actual API key
+# Placeholder for my actual key,
 os.environ["OPENAI_API_KEY"] = "xx"
 openai.api_key = "xx"
 

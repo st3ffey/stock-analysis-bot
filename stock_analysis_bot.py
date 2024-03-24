@@ -11,8 +11,6 @@ openai.api_key = "xx"
 
 warnings.filterwarnings("ignore")
 
-import yfinance as yf
-
 # Stock data from Yahoo Finance
 
 def get_stock_price(ticker: str, history: int = 5) -> str:

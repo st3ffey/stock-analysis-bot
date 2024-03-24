@@ -53,7 +53,7 @@ def get_recent_stock_news(company_name: str) -> list:
     """
     
     # API setup
-    api_key = 'xx'  # Replace 'xx' with actual API key
+    api_key = 'xx'  
     headers = {
         'Ocp-Apim-Subscription-Key': api_key,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
